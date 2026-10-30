@@ -1,10 +1,13 @@
+<p align="center"><img src="icons/icon-128.png" width="96" height="96" alt="Minimalistic Toolbar Clock icon"></p>
+
 # Minimalistic Toolbar Clock
 
-A minimal digital clock in the browser toolbar. The icon shows the time of one
-zone; click it to see all your zones and change the settings.
+A Chrome extension that puts a minimal digital clock in the browser toolbar.
+The icon shows the time of one zone; click it to see all your time zones,
+add as many as you need, and change the settings.
 
-Works in Brave, Chrome, Edge and any Chromium browser (Manifest V3). Only asks
-for the `storage` and `alarms` permissions.
+Built for Chrome and works in any Chromium browser (Brave, Edge...) with
+Manifest V3. Only asks for the `storage` and `alarms` permissions.
 
 ## Install for development
 
@@ -33,7 +36,8 @@ src/lib/time.js                  pure time helpers (tested)
 src/lib/settings.js              settings schema and storage
 src/popup/                       popup UI
 test/                            node:test suites
-dev/                             icon and popup preview pages (serve the repo over http)
+dev/                             icon and popup preview pages (serve the repo over http),
+                                 make-icons.py regenerates icons/ (needs Pillow)
 ```
 
 ## Privacy
