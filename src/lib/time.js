@@ -102,7 +102,7 @@ export function resolveTimeZone(zone) {
 
 /**
  * Hours and minutes in a zone, ready to draw.
- * 24 h: hours zero-padded ("09"). 12 h: no padding ("9"), with dayPeriod.
+ * Hours always have two digits ("09"), also in 12 h, which adds dayPeriod.
  * @param {Date} date
  * @param {string} timeZone
  * @param {boolean} hour12
@@ -111,15 +111,15 @@ export function resolveTimeZone(zone) {
 export function getTimeParts(date, timeZone, hour12) {
   const { hour, minute } = wallClock(date, timeZone);
   return {
-    hours: hour12 ? String(hour % 12 || 12) : pad(hour),
+    hours: pad(hour12 ? hour % 12 || 12 : hour),
     minutes: pad(minute),
     dayPeriod: hour12 ? (hour < 12 ? 'am' : 'pm') : null,
   };
 }
 
 /**
- * Time as text. "14:35" in 24 h; "2:35" in 12 h, or the locale's full
- * 12 h form ("2:35 p. m.", "2:35 PM") when withDayPeriod is true.
+ * Time as text. "14:35" in 24 h; "02:35" in 12 h, or the locale's full
+ * 12 h form ("02:35 p. m.", "02:35 PM") when withDayPeriod is true.
  * @param {Date} date
  * @param {string} timeZone
  * @param {{ hour12: boolean, withDayPeriod?: boolean, locale?: string }} options
@@ -128,7 +128,7 @@ export function getTimeParts(date, timeZone, hour12) {
 export function formatTime(date, timeZone, { hour12, withDayPeriod = false, locale } = {}) {
   if (hour12 && withDayPeriod) {
     return new Intl.DateTimeFormat(locale, {
-      timeZone, hourCycle: 'h12', hour: 'numeric', minute: '2-digit',
+      timeZone, hourCycle: 'h12', hour: '2-digit', minute: '2-digit',
     }).format(date);
   }
   const { hours, minutes } = getTimeParts(date, timeZone, hour12);

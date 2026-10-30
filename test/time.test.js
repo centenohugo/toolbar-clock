@@ -30,15 +30,15 @@ test('getTimeParts in 12 h handles midnight and noon', () => {
   assert.deepEqual(getTimeParts(at('2026-01-01T12:00:00Z'), 'UTC', true),
     { hours: '12', minutes: '00', dayPeriod: 'pm' });
   assert.deepEqual(getTimeParts(at('2026-01-01T21:07:00Z'), 'UTC', true),
-    { hours: '9', minutes: '07', dayPeriod: 'pm' });
+    { hours: '09', minutes: '07', dayPeriod: 'pm' });
 });
 
 test('formatTime in 24 h, 12 h and with the locale day period', () => {
   const date = at('2026-01-01T14:35:00Z');
   assert.equal(formatTime(date, 'UTC', { hour12: false }), '14:35');
-  assert.equal(formatTime(date, 'UTC', { hour12: true }), '2:35');
-  assert.equal(spaces(formatTime(date, 'UTC', { hour12: true, withDayPeriod: true, locale: 'en' })), '2:35 PM');
-  assert.equal(spaces(formatTime(date, 'UTC', { hour12: true, withDayPeriod: true, locale: 'es' })), '2:35 p. m.');
+  assert.equal(formatTime(date, 'UTC', { hour12: true }), '02:35');
+  assert.equal(spaces(formatTime(date, 'UTC', { hour12: true, withDayPeriod: true, locale: 'en' })), '02:35 PM');
+  assert.equal(spaces(formatTime(date, 'UTC', { hour12: true, withDayPeriod: true, locale: 'es' })), '02:35 p. m.');
   assert.equal(formatTime(date, 'UTC', { hour12: false, withDayPeriod: true }), '14:35');
 });
 
