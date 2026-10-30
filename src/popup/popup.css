@@ -163,7 +163,7 @@ input {
   outline-offset: 0;
 }
 
-/* Edit and remove share the second line with the primary hint. */
+/* Edit and remove share the second line with the zone's official name. */
 
 .actions {
   display: flex;
@@ -176,9 +176,22 @@ input {
   opacity: 1;
 }
 
-.zone:not(.editing):hover .hint,
-.zone:not(.editing):focus-within .hint {
+.zone:not(.editing):hover .zone-name,
+.zone:not(.editing):focus-within .zone-name {
   visibility: hidden;
+}
+
+.zone-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hint {
+  display: block;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--muted);
 }
 
 .action {

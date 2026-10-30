@@ -2,7 +2,7 @@
 
 import { loadSettings, saveSettings, onSettingsChanged, newZoneId, MAX_ZONES } from '../lib/settings.js';
 import {
-  systemTimeZone, resolveTimeZone, formatTime, offsetFrom, formatOffset, dayDelta,
+  systemTimeZone, resolveTimeZone, formatTime, offsetFrom, formatUtcOffset, zoneName, dayDelta,
   displayLabel, msUntilNextMinute,
 } from '../lib/time.js';
 import { h, t, replaceKeepingFocus } from './dom.js';
@@ -60,13 +60,14 @@ function zoneRow(zone) {
   const time = h('span', { class: 'time' });
   const offset = h('span', { class: 'offset' });
   const day = h('span', { class: 'day' });
+  const official = h('span', { class: 'zone-name' });
 
   updaters.push((now) => {
-    const base = systemTimeZone();
-    const delta = dayDelta(now, timeZone, base);
+    const delta = dayDelta(now, timeZone, systemTimeZone());
     time.textContent = timeText(now, timeZone);
-    offset.textContent = formatOffset(offsetFrom(now, timeZone, base));
+    offset.textContent = formatUtcOffset(offsetFrom(now, timeZone, 'UTC'));
     day.textContent = delta > 0 ? t('tomorrow') : delta < 0 ? t('yesterday') : '';
+    official.textContent = zoneName(now, timeZone, locale) || '';
   });
 
   const label = displayLabel(zone, t('localZone'));
@@ -101,12 +102,13 @@ function zoneRow(zone) {
         'data-key': `row:${zone.id}`,
       }, label),
       h('span', { class: 'sub' },
-        primary ? h('span', { class: 'hint' }, t('primaryHint')) : null,
+        official,
         editing ? null : h('span', { class: 'actions' },
           action('edit', t('edit'), () => startEdit(zone.id)),
           settings.zones.length > 1 ? action('remove', t('remove'), () => removeZone(zone.id)) : null,
         ),
       ),
+      primary ? h('span', { class: 'hint' }, t('primaryHint')) : null,
     ),
     h('span', { class: 'shift' }, offset, day),
     time,
