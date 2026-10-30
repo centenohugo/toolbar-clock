@@ -7,6 +7,7 @@ import {
 } from '../lib/time.js';
 import { h, t, replaceKeepingFocus } from './dom.js';
 import { createSearch } from './search.js';
+import { createPrefs } from './prefs.js';
 
 const locale = chrome.i18n.getUILanguage();
 
@@ -24,12 +25,21 @@ const search = createSearch({
   onClose: closeSearch,
 });
 
+const prefs = createPrefs({ onChange: commit });
+
 const addButton = h('button', {
   class: 'footer-button',
   type: 'button',
   'aria-expanded': 'false',
   onclick: () => (search.open ? closeSearch() : openSearch()),
 }, t('addZone'));
+
+const prefsButton = h('button', {
+  class: 'footer-button',
+  type: 'button',
+  'aria-expanded': 'false',
+  onclick: () => togglePrefs(!prefs.open),
+}, t('settings'));
 
 /** Applies a change locally right away and persists it. */
 function commit(change) {
@@ -157,7 +167,19 @@ function removeZone(id) {
   labels[Math.min(index, labels.length - 1)]?.focus();
 }
 
+function togglePrefs(open) {
+  if (open) {
+    if (search.open) closeSearch();
+    prefs.show();
+  } else {
+    prefs.hide();
+  }
+  prefsButton.textContent = t(open ? 'done' : 'settings');
+  prefsButton.setAttribute('aria-expanded', String(open));
+}
+
 function openSearch() {
+  if (prefs.open) togglePrefs(false);
   search.show();
   addButton.setAttribute('aria-expanded', 'true');
 }
@@ -179,6 +201,7 @@ function render() {
   replaceKeepingFocus(list, ...settings.zones.map(zoneRow));
   addButton.disabled = settings.zones.length >= MAX_ZONES;
   if (addButton.disabled && search.open) closeSearch();
+  prefs.sync(settings);
   tick();
 }
 
@@ -199,7 +222,7 @@ async function boot() {
   document.documentElement.lang = locale;
   document.title = t('extName');
   settings = await loadSettings();
-  app.append(list, search.el, h('footer', { class: 'footer' }, addButton));
+  app.append(list, search.el, prefs.el, h('footer', { class: 'footer' }, addButton, prefsButton));
   render();
   scheduleTick();
   onSettingsChanged((next) => {
