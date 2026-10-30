@@ -10,6 +10,7 @@ import { h, t, replaceKeepingFocus } from './dom.js';
 const locale = chrome.i18n.getUILanguage();
 
 let settings;
+let editingId = null; // zone whose label is being edited
 let updaters = []; // one per visible time, called every minute
 
 const app = document.getElementById('app');
@@ -43,25 +44,102 @@ function zoneRow(zone) {
     day.textContent = delta > 0 ? t('tomorrow') : delta < 0 ? t('yesterday') : '';
   });
 
+  const label = displayLabel(zone, t('localZone'));
+  const editing = zone.id === editingId;
+  const action = (key, text, run) => h('button', {
+    class: 'action',
+    type: 'button',
+    title: '',
+    'aria-label': `${text} ${label}`,
+    'data-key': `${key}:${zone.id}`,
+    onclick: (event) => {
+      event.stopPropagation();
+      run();
+    },
+  }, text);
+
   const makePrimary = () => {
-    if (!primary) commit((s) => { s.primaryId = zone.id; });
+    if (!primary && !editing) commit((s) => { s.primaryId = zone.id; });
   };
 
-  return h('li', { class: primary ? 'zone primary' : 'zone', onclick: makePrimary },
+  return h('li', {
+    class: ['zone', primary && 'primary', editing && 'editing'].filter(Boolean).join(' '),
+    title: primary || editing ? null : t('makePrimary'),
+    onclick: makePrimary,
+  },
     h('div', { class: 'name' },
-      h('button', {
+      editing ? labelInput(zone) : h('button', {
         class: 'label',
         type: 'button',
-        title: primary ? null : t('makePrimary'),
         'aria-current': primary ? 'true' : null,
         'aria-description': primary ? null : t('makePrimary'),
         'data-key': `row:${zone.id}`,
-      }, displayLabel(zone, t('localZone'))),
-      h('span', { class: 'sub' }, primary ? h('span', { class: 'hint' }, t('primaryHint')) : null),
+      }, label),
+      h('span', { class: 'sub' },
+        primary ? h('span', { class: 'hint' }, t('primaryHint')) : null,
+        editing ? null : h('span', { class: 'actions' },
+          action('edit', t('edit'), () => startEdit(zone.id)),
+          settings.zones.length > 1 ? action('remove', t('remove'), () => removeZone(zone.id)) : null,
+        ),
+      ),
     ),
     h('span', { class: 'shift' }, offset, day),
     time,
   );
+}
+
+/** Inline label editor: Enter or blur saves, Esc cancels, empty resets to the derived name. */
+function labelInput(zone) {
+  const derived = displayLabel({ ...zone, label: '' }, t('localZone'));
+  const input = h('input', {
+    class: 'label-input',
+    type: 'text',
+    value: zone.label,
+    placeholder: derived,
+    maxLength: 40,
+    'aria-label': t('labelPlaceholder'),
+    'data-key': `row:${zone.id}`,
+    onclick: (event) => event.stopPropagation(),
+  });
+  let finished = false;
+  const finish = (save) => {
+    if (finished) return;
+    finished = true;
+    editingId = null;
+    const value = input.value.trim() === derived ? '' : input.value.trim();
+    if (save && value !== zone.label) {
+      commit((s) => { s.zones.find((z) => z.id === zone.id).label = value; });
+    } else {
+      render();
+    }
+  };
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') finish(true);
+    else if (event.key === 'Escape') finish(false);
+    else return;
+    event.preventDefault();
+    event.stopPropagation();
+  });
+  input.addEventListener('blur', () => finish(true));
+  return input;
+}
+
+function startEdit(id) {
+  editingId = id;
+  render();
+  const input = list.querySelector('.label-input');
+  input.focus();
+  input.select();
+}
+
+function removeZone(id) {
+  const index = settings.zones.findIndex((z) => z.id === id);
+  commit((s) => {
+    s.zones.splice(index, 1);
+    if (s.primaryId === id) s.primaryId = s.zones[0].id;
+  });
+  const labels = list.querySelectorAll('.label');
+  labels[Math.min(index, labels.length - 1)]?.focus();
 }
 
 function render() {
@@ -91,7 +169,7 @@ async function boot() {
   scheduleTick();
   onSettingsChanged((next) => {
     settings = next;
-    render();
+    if (editingId === null) render();
   });
 }
 

@@ -111,7 +111,8 @@ input {
   outline: none;
 }
 
-.primary .label {
+.primary .label,
+.primary .label-input {
   font-weight: 600;
 }
 
@@ -141,4 +142,51 @@ input {
   font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
+}
+
+.label-input {
+  display: block;
+  width: calc(100% + 5px);
+  height: 20px;
+  margin: 0 0 0 -5px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--field);
+}
+
+.label-input:focus-visible {
+  outline-offset: 0;
+}
+
+/* Edit and remove share the second line with the primary hint. */
+
+.actions {
+  display: flex;
+  gap: 12px;
+  opacity: 0;
+}
+
+.zone:hover .actions,
+.zone:focus-within .actions {
+  opacity: 1;
+}
+
+.zone:not(.editing):hover .hint,
+.zone:not(.editing):focus-within .hint {
+  visibility: hidden;
+}
+
+.action {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.action:hover {
+  color: var(--fg);
+  text-decoration: underline;
 }
