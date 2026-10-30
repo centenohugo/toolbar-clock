@@ -1,9 +1,94 @@
 // Pure time helpers shared by the service worker and the popup. No chrome.*
 // APIs here, so everything can be tested with node:test.
 
+// ICU still reports some zones by their legacy ids; map them to the current
+// ones so city names and search use modern spellings.
+const LEGACY_IDS = {
+  'Africa/Asmera': 'Africa/Asmara',
+  'America/Buenos_Aires': 'America/Argentina/Buenos_Aires',
+  'America/Catamarca': 'America/Argentina/Catamarca',
+  'America/Coral_Harbour': 'America/Atikokan',
+  'America/Cordoba': 'America/Argentina/Cordoba',
+  'America/Godthab': 'America/Nuuk',
+  'America/Indianapolis': 'America/Indiana/Indianapolis',
+  'America/Jujuy': 'America/Argentina/Jujuy',
+  'America/Louisville': 'America/Kentucky/Louisville',
+  'America/Mendoza': 'America/Argentina/Mendoza',
+  'Asia/Calcutta': 'Asia/Kolkata',
+  'Asia/Katmandu': 'Asia/Kathmandu',
+  'Asia/Rangoon': 'Asia/Yangon',
+  'Asia/Saigon': 'Asia/Ho_Chi_Minh',
+  'Atlantic/Faeroe': 'Atlantic/Faroe',
+  'Europe/Kiev': 'Europe/Kyiv',
+  'Pacific/Enderbury': 'Pacific/Kanton',
+  'Pacific/Ponape': 'Pacific/Pohnpei',
+  'Pacific/Truk': 'Pacific/Chuuk',
+};
+
+// Spanish names (already normalized) that differ from the IANA city, by modern id.
+const EXONYMS = {
+  'America/New_York': ['nueva york', 'washington', 'miami', 'boston'],
+  'America/Los_Angeles': ['san francisco'],
+  'America/Mexico_City': ['ciudad de mexico'],
+  'America/Santiago': ['santiago de chile'],
+  'America/Sao_Paulo': ['rio de janeiro'],
+  'America/Havana': ['la habana'],
+  'America/Guayaquil': ['quito'],
+  'Atlantic/Canary': ['canarias', 'tenerife', 'las palmas'],
+  'Europe/London': ['londres', 'edimburgo'],
+  'Europe/Madrid': ['barcelona'],
+  'Europe/Lisbon': ['lisboa'],
+  'Europe/Rome': ['roma'],
+  'Europe/Warsaw': ['varsovia'],
+  'Europe/Stockholm': ['estocolmo'],
+  'Europe/Copenhagen': ['copenhague'],
+  'Europe/Brussels': ['bruselas'],
+  'Europe/Vienna': ['viena'],
+  'Europe/Prague': ['praga'],
+  'Europe/Zurich': ['ginebra', 'berna'],
+  'Europe/Athens': ['atenas'],
+  'Europe/Istanbul': ['estambul'],
+  'Europe/Moscow': ['moscu'],
+  'Africa/Cairo': ['el cairo'],
+  'Africa/Johannesburg': ['johannesburgo', 'ciudad del cabo'],
+  'Asia/Jerusalem': ['jerusalen', 'tel aviv'],
+  'Asia/Tehran': ['teheran'],
+  'Asia/Kolkata': ['bombay', 'mumbai', 'nueva delhi', 'delhi', 'calcuta'],
+  'Asia/Ho_Chi_Minh': ['hanoi'],
+  'Asia/Jakarta': ['yakarta'],
+  'Asia/Singapore': ['singapur'],
+  'Asia/Shanghai': ['pekin', 'beijing'],
+  'Asia/Seoul': ['seul'],
+  'Asia/Tokyo': ['tokio'],
+  'Australia/Sydney': ['sidney'],
+  'Pacific/Honolulu': ['hawai'],
+};
+
+const formatters = new Map();
+
+// Wall-clock fields of `date` in `timeZone`, 24 h, Latin digits.
+function wallClock(date, timeZone) {
+  let fmt = formatters.get(timeZone);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone, hourCycle: 'h23', numberingSystem: 'latn',
+      year: 'numeric', month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: 'numeric', second: 'numeric',
+    });
+    formatters.set(timeZone, fmt);
+  }
+  const p = {};
+  for (const { type, value } of fmt.formatToParts(date)) p[type] = Number(value);
+  return p;
+}
+
+const pad = (n) => String(n).padStart(2, '0');
+const canonical = (timeZone) => LEGACY_IDS[timeZone] || timeZone;
+const lastSegment = (id) => id.split('/').pop().replace(/_/g, ' ');
+
 /** IANA name of the system time zone. */
 export function systemTimeZone() {
-  throw new Error('not implemented');
+  return new Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 }
 
 /**
@@ -12,7 +97,7 @@ export function systemTimeZone() {
  * @returns {string}
  */
 export function resolveTimeZone(zone) {
-  throw new Error('not implemented');
+  return zone.timeZone || systemTimeZone();
 }
 
 /**
@@ -24,7 +109,12 @@ export function resolveTimeZone(zone) {
  * @returns {{ hours: string, minutes: string, dayPeriod: 'am'|'pm'|null }}
  */
 export function getTimeParts(date, timeZone, hour12) {
-  throw new Error('not implemented');
+  const { hour, minute } = wallClock(date, timeZone);
+  return {
+    hours: hour12 ? String(hour % 12 || 12) : pad(hour),
+    minutes: pad(minute),
+    dayPeriod: hour12 ? (hour < 12 ? 'am' : 'pm') : null,
+  };
 }
 
 /**
@@ -35,8 +125,14 @@ export function getTimeParts(date, timeZone, hour12) {
  * @param {{ hour12: boolean, withDayPeriod?: boolean, locale?: string }} options
  * @returns {string}
  */
-export function formatTime(date, timeZone, options) {
-  throw new Error('not implemented');
+export function formatTime(date, timeZone, { hour12, withDayPeriod = false, locale } = {}) {
+  if (hour12 && withDayPeriod) {
+    return new Intl.DateTimeFormat(locale, {
+      timeZone, hourCycle: 'h12', hour: 'numeric', minute: '2-digit',
+    }).format(date);
+  }
+  const { hours, minutes } = getTimeParts(date, timeZone, hour12);
+  return `${hours}:${minutes}`;
 }
 
 /**
@@ -44,17 +140,39 @@ export function formatTime(date, timeZone, options) {
  * @returns {number}
  */
 export function offsetFrom(date, timeZone, baseTimeZone) {
-  throw new Error('not implemented');
+  const asUtc = (p) => Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  const diff = asUtc(wallClock(date, timeZone)) - asUtc(wallClock(date, baseTimeZone));
+  return Math.round(diff / 60000);
 }
 
 /**
- * Offset as shown in the popup: "+0 h", "+7 h", "−3 h", "+5:30 h", "−9:30 h".
+ * Offset from UTC as shown in the popup: "UTC+8", "UTC−3", "UTC+5:30", "UTC+0".
  * Uses the real minus sign (U+2212).
- * @param {number} minutes
+ * @param {number} minutes  From offsetFrom(date, timeZone, 'UTC').
  * @returns {string}
  */
-export function formatOffset(minutes) {
-  throw new Error('not implemented');
+export function formatUtcOffset(minutes) {
+  const sign = minutes < 0 ? '−' : '+';
+  const abs = Math.abs(minutes);
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  return m ? `UTC${sign}${h}:${pad(m)}` : `UTC${sign}${h}`;
+}
+
+/**
+ * Official name of the zone at `date`, in `locale`, capitalized:
+ * "Hora estándar de Hong Kong", "Eastern Daylight Time". Null when the
+ * runtime only knows it as a bare offset ("GMT+3").
+ * @param {Date} date
+ * @param {string} timeZone
+ * @param {string} [locale]
+ * @returns {string|null}
+ */
+export function zoneName(date, timeZone, locale) {
+  const name = new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: 'long' })
+    .formatToParts(date).find((p) => p.type === 'timeZoneName')?.value;
+  if (!name || /^(GMT|UTC)([+−-]|$)/.test(name)) return null;
+  return name[0].toLocaleUpperCase(locale) + name.slice(1);
 }
 
 /**
@@ -62,7 +180,8 @@ export function formatOffset(minutes) {
  * @returns {-1|0|1}
  */
 export function dayDelta(date, timeZone, baseTimeZone) {
-  throw new Error('not implemented');
+  const day = (p) => Date.UTC(p.year, p.month - 1, p.day);
+  return Math.sign(day(wallClock(date, timeZone)) - day(wallClock(date, baseTimeZone)));
 }
 
 /**
@@ -72,7 +191,7 @@ export function dayDelta(date, timeZone, baseTimeZone) {
  * @returns {string}
  */
 export function cityName(timeZone) {
-  throw new Error('not implemented');
+  return lastSegment(canonical(timeZone));
 }
 
 /**
@@ -83,7 +202,32 @@ export function cityName(timeZone) {
  * @returns {string}
  */
 export function displayLabel(zone, localLabel) {
-  throw new Error('not implemented');
+  const custom = (zone.label || '').trim();
+  if (custom) return custom;
+  return zone.timeZone ? cityName(zone.timeZone) : localLabel;
+}
+
+// Lowercase, no diacritics, "_", "-" and "/" as spaces.
+function normalize(text) {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+    .replace(/[_\-/]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function defaultTimeZones() {
+  const zones = Intl.supportedValuesOf('timeZone');
+  return zones.includes('UTC') ? zones : [...zones, 'UTC'];
+}
+
+// 0: a city name starts with the query, 1: a word does, 2: anywhere, -1: no match.
+function matchRank(timeZone, q) {
+  const modern = canonical(timeZone);
+  const cities = [cityName(timeZone), lastSegment(timeZone)].map(normalize)
+    .concat(EXONYMS[modern] || []);
+  const keys = cities.concat(normalize(timeZone), normalize(modern));
+  if (cities.some((c) => c.startsWith(q))) return 0;
+  if (keys.some((k) => ` ${k}`.includes(` ${q}`))) return 1;
+  if (keys.some((k) => k.includes(q))) return 2;
+  return -1;
 }
 
 /**
@@ -94,8 +238,20 @@ export function displayLabel(zone, localLabel) {
  * @param {{ limit?: number, timeZones?: string[] }} [options]
  * @returns {string[]}
  */
-export function searchTimeZones(query, options) {
-  throw new Error('not implemented');
+export function searchTimeZones(query, { limit = 5, timeZones = defaultTimeZones() } = {}) {
+  const q = normalize(query || '');
+  if (!q) return [];
+  const seen = new Set();
+  const hits = [];
+  for (const id of timeZones) {
+    if (seen.has(canonical(id))) continue;
+    seen.add(canonical(id));
+    const rank = matchRank(id, q);
+    if (rank >= 0) hits.push({ id, rank, city: normalize(cityName(id)) });
+  }
+  hits.sort((a, b) => a.rank - b.rank || (a.city < b.city ? -1 : a.city > b.city ? 1 : 0)
+    || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return hits.slice(0, limit).map((h) => h.id);
 }
 
 /**
@@ -104,5 +260,6 @@ export function searchTimeZones(query, options) {
  * @returns {number}
  */
 export function msUntilNextMinute(date) {
-  throw new Error('not implemented');
+  const intoMinute = ((date.getTime() % 60000) + 60000) % 60000;
+  return 60000 - intoMinute;
 }

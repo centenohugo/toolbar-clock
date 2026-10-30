@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Icon preview</title>
+    <style>
+      body {
+        margin: 16px;
+        font: 13px system-ui, "Segoe UI", sans-serif;
+        color: #202124;
+        background: #fff;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 6px 10px;
+        border-bottom: 1px solid #e0e0e0;
+        text-align: left;
+        vertical-align: middle;
+        white-space: nowrap;
+      }
+      th {
+        font-weight: 600;
+      }
+      .strip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 8px;
+      }
+      .light {
+        background: #f8f9fa;
+      }
+      .dark {
+        background: #2b2d31;
+      }
+      canvas {
+        display: block;
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Toolbar icon preview</h1>
+    <p>
+      Each cell: 16 px and 32 px at 1x, then both at 4x, over a light and a dark toolbar strip.
+      Serve the repo over http (ES modules do not load from file://).
+    </p>
+    <table id="grid"></table>
+    <script type="module" src="icon-preview.js"></script>
+  </body>
+</html>
