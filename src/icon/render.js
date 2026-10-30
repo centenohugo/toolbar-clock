@@ -3,7 +3,9 @@
 // filling the whole icon on a transparent background.
 
 const SIZES = [16, 32];
-const FONT = (px) => `700 ${px}px system-ui, "Segoe UI", sans-serif`;
+// Fonts by name only: resolving the `system-ui` keyword in a freshly started
+// service worker can block the thread for good on Windows.
+const FONT = (px) => `700 ${px}px "Segoe UI", Arial, sans-serif`;
 
 // Font sizes only depend on the icon size and digit count, so they are
 // worked out once and reused every minute.
