@@ -9,6 +9,8 @@ add as many as you need, and change the settings.
 Built for Chrome and works in any Chromium browser (Brave, Edge...) with
 Manifest V3. Only asks for the `storage` and `alarms` permissions.
 
+![The clock in the Chrome toolbar with the time zones popup open](store/screenshots/04-closeup.png)
+
 ## Install for development
 
 1. Open `brave://extensions` (or `chrome://extensions`).
