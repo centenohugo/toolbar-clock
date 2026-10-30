@@ -1,4 +1,4 @@
-// Dev-only: draws renderIcon() output for every style combination.
+// Dev-only: draws renderIcon() output for a few text colors.
 
 import { renderIcon } from '../src/icon/render.js';
 
@@ -10,26 +10,17 @@ const TIMES = [
   { label: '12:59 (12 h)', hours: '12', minutes: '59' },
 ];
 
-const BACKGROUNDS = [
-  { label: 'dark bg', color: '#ffffff', background: '#202124' },
-  { label: 'light bg', color: '#202124', background: '#f1f3f4' },
-  { label: 'transparent, light text', color: '#ffffff', background: null },
-  { label: 'transparent, dark text', color: '#202124', background: null },
+const COLORS = [
+  { label: 'white text', color: '#ffffff' },
+  { label: 'dark text', color: '#202124' },
+  { label: 'accent text', color: '#8ab4f8' },
 ];
 
 const grid = document.getElementById('grid');
-grid.append(row('th', ['Style', ...TIMES.map((t) => t.label)]));
+grid.append(row('th', ['Color', ...TIMES.map((t) => t.label)]));
 
-for (const layout of ['horizontal', 'stacked']) {
-  for (const fit of ['tight', 'roomy']) {
-    for (const bold of [true, false]) {
-      for (const bg of BACKGROUNDS) {
-        const style = { layout, fit, bold, color: bg.color, background: bg.background };
-        const name = `${layout} · ${fit} · ${bold ? 'bold' : 'regular'} · ${bg.label}`;
-        grid.append(row('td', [name, ...TIMES.map((t) => cell(renderIcon(t, style)))]));
-      }
-    }
-  }
+for (const { label, color } of COLORS) {
+  grid.append(row('td', [label, ...TIMES.map((t) => cell(renderIcon(t, { color })))]));
 }
 
 function row(tag, items) {
