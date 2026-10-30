@@ -1,0 +1,145 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  systemTimeZone, resolveTimeZone, getTimeParts, formatTime, offsetFrom, formatOffset,
+  dayDelta, cityName, displayLabel, searchTimeZones, msUntilNextMinute,
+} from '../src/lib/time.js';
+
+const at = (iso) => new Date(iso);
+// ICU separates the day period with narrow or regular no-break spaces.
+const spaces = (s) => s.replace(/\s/g, ' ');
+
+test('systemTimeZone and resolveTimeZone', () => {
+  assert.equal(typeof systemTimeZone(), 'string');
+  assert.equal(resolveTimeZone({ timeZone: null }), systemTimeZone());
+  assert.equal(resolveTimeZone({ timeZone: 'Asia/Tokyo' }), 'Asia/Tokyo');
+});
+
+test('getTimeParts in 24 h pads hours and never shows 24', () => {
+  assert.deepEqual(getTimeParts(at('2026-01-01T00:30:00Z'), 'UTC', false),
+    { hours: '00', minutes: '30', dayPeriod: null });
+  assert.deepEqual(getTimeParts(at('2026-01-01T09:05:00Z'), 'UTC', false),
+    { hours: '09', minutes: '05', dayPeriod: null });
+  assert.deepEqual(getTimeParts(at('2026-01-01T23:59:59Z'), 'UTC', false),
+    { hours: '23', minutes: '59', dayPeriod: null });
+});
+
+test('getTimeParts in 12 h handles midnight and noon', () => {
+  assert.deepEqual(getTimeParts(at('2026-01-01T00:05:00Z'), 'UTC', true),
+    { hours: '12', minutes: '05', dayPeriod: 'am' });
+  assert.deepEqual(getTimeParts(at('2026-01-01T12:00:00Z'), 'UTC', true),
+    { hours: '12', minutes: '00', dayPeriod: 'pm' });
+  assert.deepEqual(getTimeParts(at('2026-01-01T21:07:00Z'), 'UTC', true),
+    { hours: '9', minutes: '07', dayPeriod: 'pm' });
+});
+
+test('formatTime in 24 h, 12 h and with the locale day period', () => {
+  const date = at('2026-01-01T14:35:00Z');
+  assert.equal(formatTime(date, 'UTC', { hour12: false }), '14:35');
+  assert.equal(formatTime(date, 'UTC', { hour12: true }), '2:35');
+  assert.equal(spaces(formatTime(date, 'UTC', { hour12: true, withDayPeriod: true, locale: 'en' })), '2:35 PM');
+  assert.equal(spaces(formatTime(date, 'UTC', { hour12: true, withDayPeriod: true, locale: 'es' })), '2:35 p. m.');
+  assert.equal(formatTime(date, 'UTC', { hour12: false, withDayPeriod: true }), '14:35');
+});
+
+test('half-hour and 45-minute zones', () => {
+  const date = at('2026-01-01T09:05:00Z');
+  assert.equal(formatTime(date, 'Asia/Kolkata', { hour12: false }), '14:35');
+  assert.equal(formatTime(date, 'Asia/Kathmandu', { hour12: false }), '14:50');
+  assert.equal(offsetFrom(date, 'Asia/Kolkata', 'UTC'), 330);
+  assert.equal(offsetFrom(date, 'Asia/Kathmandu', 'Asia/Kolkata'), 15);
+  assert.equal(offsetFrom(date, 'UTC', 'Asia/Kathmandu'), -345);
+});
+
+test('offsetFrom follows DST in the weeks the US and EU disagree', () => {
+  const madridVsNy = (iso) => offsetFrom(at(iso), 'Europe/Madrid', 'America/New_York');
+  assert.equal(madridVsNy('2026-03-01T12:00:00Z'), 360);
+  assert.equal(madridVsNy('2026-03-15T12:00:00Z'), 300); // US already on DST
+  assert.equal(madridVsNy('2026-04-05T12:00:00Z'), 360);
+  assert.equal(madridVsNy('2026-10-28T12:00:00Z'), 300); // EU already off DST
+  assert.equal(madridVsNy('2026-11-05T12:00:00Z'), 360);
+  // Right across the US switch: 2026-03-08 07:00Z.
+  assert.equal(offsetFrom(at('2026-03-08T06:59:00Z'), 'America/New_York', 'UTC'), -300);
+  assert.equal(offsetFrom(at('2026-03-08T07:00:00Z'), 'America/New_York', 'UTC'), -240);
+});
+
+test('formatOffset', () => {
+  assert.equal(formatOffset(0), '+0 h');
+  assert.equal(formatOffset(420), '+7 h');
+  assert.equal(formatOffset(-180), '−3 h');
+  assert.equal(formatOffset(330), '+5:30 h');
+  assert.equal(formatOffset(-570), '−9:30 h');
+  assert.equal(formatOffset(345), '+5:45 h');
+});
+
+test('dayDelta across the date line', () => {
+  // Auckland 2026-01-16 09:00, Los Angeles 2026-01-15 12:00.
+  const date = at('2026-01-15T20:00:00Z');
+  assert.equal(dayDelta(date, 'Pacific/Auckland', 'America/Los_Angeles'), 1);
+  assert.equal(dayDelta(date, 'America/Los_Angeles', 'Pacific/Auckland'), -1);
+  assert.equal(offsetFrom(date, 'Pacific/Auckland', 'America/Los_Angeles'), 1260);
+  // Auckland 2026-01-15 23:00, Los Angeles 2026-01-15 02:00.
+  assert.equal(dayDelta(at('2026-01-15T10:00:00Z'), 'Pacific/Auckland', 'America/Los_Angeles'), 0);
+  assert.equal(dayDelta(date, 'UTC', 'UTC'), 0);
+});
+
+test('cityName uses modern names for legacy ids', () => {
+  assert.equal(cityName('America/New_York'), 'New York');
+  assert.equal(cityName('America/Argentina/Buenos_Aires'), 'Buenos Aires');
+  assert.equal(cityName('America/Buenos_Aires'), 'Buenos Aires');
+  assert.equal(cityName('Asia/Calcutta'), 'Kolkata');
+  assert.equal(cityName('Europe/Kiev'), 'Kyiv');
+  assert.equal(cityName('Asia/Saigon'), 'Ho Chi Minh');
+  assert.equal(cityName('Asia/Katmandu'), 'Kathmandu');
+  assert.equal(cityName('Asia/Rangoon'), 'Yangon');
+  assert.equal(cityName('UTC'), 'UTC');
+});
+
+test('displayLabel prefers the custom label, then the city, then the local label', () => {
+  assert.equal(displayLabel({ timeZone: 'Asia/Tokyo', label: '  Office ' }, 'Local'), 'Office');
+  assert.equal(displayLabel({ timeZone: 'Asia/Tokyo', label: '   ' }, 'Local'), 'Tokyo');
+  assert.equal(displayLabel({ timeZone: null, label: '' }, 'Local'), 'Local');
+  assert.equal(displayLabel({ timeZone: null, label: 'Home' }, 'Local'), 'Home');
+});
+
+test('searchTimeZones matches cities, exonyms and accents in any case', () => {
+  assert.deepEqual(searchTimeZones('tokio'), ['Asia/Tokyo']);
+  assert.deepEqual(searchTimeZones('Nueva York'), ['America/New_York']);
+  assert.deepEqual(searchTimeZones('sao'), ['America/Sao_Paulo', 'Africa/Sao_Tome']);
+  assert.deepEqual(searchTimeZones('SÃO'), ['America/Sao_Paulo', 'Africa/Sao_Tome']);
+  assert.deepEqual(searchTimeZones('buenos').map(cityName), ['Buenos Aires']);
+  assert.deepEqual(searchTimeZones('Pekín'), ['Asia/Shanghai']);
+  assert.deepEqual(searchTimeZones('londres'), ['Europe/London']);
+  assert.deepEqual(searchTimeZones('utc'), ['UTC']);
+});
+
+test('searchTimeZones finds legacy ids by their modern name', () => {
+  assert.deepEqual(searchTimeZones('kolkata').map(cityName), ['Kolkata']);
+  assert.deepEqual(searchTimeZones('bombay').map(cityName), ['Kolkata']);
+  assert.deepEqual(searchTimeZones('kyiv').map(cityName), ['Kyiv']);
+});
+
+test('searchTimeZones ranks city prefix, then word prefix, then substring', () => {
+  const timeZones = ['Europe/Paris', 'America/New_York', 'Asia/Yerevan', 'Europe/Newcastle_Fake'];
+  assert.deepEqual(searchTimeZones('new', { timeZones }), ['America/New_York', 'Europe/Newcastle_Fake']);
+  assert.deepEqual(searchTimeZones('york', { timeZones }), ['America/New_York']);
+  // "e": no city starts with it, "Europe" does, the rest only contain it.
+  assert.deepEqual(searchTimeZones('e', { timeZones }),
+    ['Europe/Newcastle_Fake', 'Europe/Paris', 'America/New_York', 'Asia/Yerevan']);
+});
+
+test('searchTimeZones limits, dedupes and ignores empty queries', () => {
+  assert.deepEqual(searchTimeZones(''), []);
+  assert.deepEqual(searchTimeZones('   '), []);
+  assert.equal(searchTimeZones('a').length, 5);
+  assert.equal(searchTimeZones('a', { limit: 12 }).length, 12);
+  const timeZones = ['Asia/Calcutta', 'Asia/Kolkata', 'Asia/Calcutta'];
+  assert.deepEqual(searchTimeZones('kolkata', { timeZones }), ['Asia/Calcutta']);
+});
+
+test('msUntilNextMinute stays within (0, 60000]', () => {
+  assert.equal(msUntilNextMinute(at('2026-01-01T10:00:00.000Z')), 60000);
+  assert.equal(msUntilNextMinute(at('2026-01-01T10:00:59.999Z')), 1);
+  assert.equal(msUntilNextMinute(at('2026-01-01T10:00:30.000Z')), 30000);
+  assert.equal(msUntilNextMinute(at('1969-12-31T23:59:30.000Z')), 30000);
+});
