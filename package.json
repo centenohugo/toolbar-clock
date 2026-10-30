@@ -1,0 +1,11 @@
+{
+  "name": "toolbar-clock",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A minimal digital clock in the browser toolbar.",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  }
+}
