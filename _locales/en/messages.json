@@ -1,5 +1,5 @@
 {
-  "extName": { "message": "Toolbar Clock" },
+  "extName": { "message": "Minimalistic Toolbar Clock" },
   "extDescription": { "message": "A minimal digital clock in your browser toolbar, with as many time zones as you need." },
   "localZone": { "message": "Local" },
   "addZone": { "message": "Add zone" },
