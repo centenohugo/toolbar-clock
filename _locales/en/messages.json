@@ -20,14 +20,5 @@
   "timeFormat": { "message": "Format" },
   "format24": { "message": "24 h" },
   "format12": { "message": "12 h" },
-  "layout": { "message": "Layout" },
-  "layoutHorizontal": { "message": "Horizontal" },
-  "layoutStacked": { "message": "Stacked" },
-  "textSize": { "message": "Text size" },
-  "fitTight": { "message": "Fill" },
-  "fitRoomy": { "message": "With margin" },
-  "textColor": { "message": "Text color" },
-  "background": { "message": "Background" },
-  "transparent": { "message": "Transparent" },
-  "bold": { "message": "Bold" }
+  "textColor": { "message": "Text color" }
 }

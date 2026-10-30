@@ -12,12 +12,10 @@ export const MAX_ZONES = 20;
  * @property {string|null} timeZone  IANA name, or null to follow the system zone.
  * @property {string} label      Custom label; empty means "derive from the zone".
  *
+ * The icon is always stacked, bold, edge to edge on a transparent
+ * background; only the text color is configurable.
  * @typedef {Object} IconStyle
- * @property {'horizontal'|'stacked'} layout
- * @property {'tight'|'roomy'} fit
- * @property {string} color          Text color, #rrggbb.
- * @property {string|null} background  #rrggbb, or null for transparent.
- * @property {boolean} bold
+ * @property {string} color  Text color, #rrggbb.
  *
  * @typedef {Object} Settings
  * @property {number} version
@@ -33,13 +31,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   zones: [{ id: 'local', timeZone: null, label: '' }],
   primaryId: 'local',
   hour12: false,
-  icon: {
-    layout: 'horizontal',
-    fit: 'tight',
-    color: '#ffffff',
-    background: '#202124',
-    bold: true,
-  },
+  icon: { color: '#ffffff' },
 });
 
 /** @returns {Settings} */
@@ -55,7 +47,7 @@ export function normalizeSettings(raw) {
     zones,
     primaryId,
     hour12: typeof raw.hour12 === 'boolean' ? raw.hour12 : base.hour12,
-    icon: { ...base.icon, ...(raw.icon || {}) },
+    icon: { color: raw.icon?.color || base.icon.color },
   };
 }
 

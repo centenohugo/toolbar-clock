@@ -20,14 +20,5 @@
   "timeFormat": { "message": "Formato" },
   "format24": { "message": "24 h" },
   "format12": { "message": "12 h" },
-  "layout": { "message": "Disposición" },
-  "layoutHorizontal": { "message": "Horizontal" },
-  "layoutStacked": { "message": "Apilada" },
-  "textSize": { "message": "Tamaño del texto" },
-  "fitTight": { "message": "Ajustado" },
-  "fitRoomy": { "message": "Con margen" },
-  "textColor": { "message": "Color del texto" },
-  "background": { "message": "Fondo" },
-  "transparent": { "message": "Transparente" },
-  "bold": { "message": "Negrita" }
+  "textColor": { "message": "Color del texto" }
 }
