@@ -146,17 +146,33 @@ export function offsetFrom(date, timeZone, baseTimeZone) {
 }
 
 /**
- * Offset as shown in the popup: "+0 h", "+7 h", "−3 h", "+5:30 h", "−9:30 h".
+ * Offset from UTC as shown in the popup: "UTC+8", "UTC−3", "UTC+5:30", "UTC+0".
  * Uses the real minus sign (U+2212).
- * @param {number} minutes
+ * @param {number} minutes  From offsetFrom(date, timeZone, 'UTC').
  * @returns {string}
  */
-export function formatOffset(minutes) {
+export function formatUtcOffset(minutes) {
   const sign = minutes < 0 ? '−' : '+';
   const abs = Math.abs(minutes);
   const h = Math.floor(abs / 60);
   const m = abs % 60;
-  return m ? `${sign}${h}:${pad(m)} h` : `${sign}${h} h`;
+  return m ? `UTC${sign}${h}:${pad(m)}` : `UTC${sign}${h}`;
+}
+
+/**
+ * Official name of the zone at `date`, in `locale`, capitalized:
+ * "Hora estándar de Hong Kong", "Eastern Daylight Time". Null when the
+ * runtime only knows it as a bare offset ("GMT+3").
+ * @param {Date} date
+ * @param {string} timeZone
+ * @param {string} [locale]
+ * @returns {string|null}
+ */
+export function zoneName(date, timeZone, locale) {
+  const name = new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: 'long' })
+    .formatToParts(date).find((p) => p.type === 'timeZoneName')?.value;
+  if (!name || /^(GMT|UTC)([+−-]|$)/.test(name)) return null;
+  return name[0].toLocaleUpperCase(locale) + name.slice(1);
 }
 
 /**

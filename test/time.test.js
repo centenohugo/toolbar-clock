@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  systemTimeZone, resolveTimeZone, getTimeParts, formatTime, offsetFrom, formatOffset,
-  dayDelta, cityName, displayLabel, searchTimeZones, msUntilNextMinute,
+  systemTimeZone, resolveTimeZone, getTimeParts, formatTime, offsetFrom, formatUtcOffset,
+  zoneName, dayDelta, cityName, displayLabel, searchTimeZones, msUntilNextMinute,
 } from '../src/lib/time.js';
 
 const at = (iso) => new Date(iso);
@@ -63,13 +63,30 @@ test('offsetFrom follows DST in the weeks the US and EU disagree', () => {
   assert.equal(offsetFrom(at('2026-03-08T07:00:00Z'), 'America/New_York', 'UTC'), -240);
 });
 
-test('formatOffset', () => {
-  assert.equal(formatOffset(0), '+0 h');
-  assert.equal(formatOffset(420), '+7 h');
-  assert.equal(formatOffset(-180), '−3 h');
-  assert.equal(formatOffset(330), '+5:30 h');
-  assert.equal(formatOffset(-570), '−9:30 h');
-  assert.equal(formatOffset(345), '+5:45 h');
+test('formatUtcOffset', () => {
+  assert.equal(formatUtcOffset(0), 'UTC+0');
+  assert.equal(formatUtcOffset(480), 'UTC+8');
+  assert.equal(formatUtcOffset(-180), 'UTC−3');
+  assert.equal(formatUtcOffset(330), 'UTC+5:30');
+  assert.equal(formatUtcOffset(-570), 'UTC−9:30');
+  assert.equal(formatUtcOffset(345), 'UTC+5:45');
+});
+
+test('formatUtcOffset of a zone at a given instant', () => {
+  const offset = (iso, tz) => formatUtcOffset(offsetFrom(at(iso), tz, 'UTC'));
+  assert.equal(offset('2026-10-30T02:00:00Z', 'Asia/Hong_Kong'), 'UTC+8');
+  assert.equal(offset('2026-07-01T12:00:00Z', 'Europe/Madrid'), 'UTC+2');
+  assert.equal(offset('2026-12-01T12:00:00Z', 'Europe/Madrid'), 'UTC+1');
+});
+
+test('zoneName gives the official, capitalized name for the date and locale', () => {
+  const winter = at('2026-12-01T12:00:00Z');
+  const summer = at('2026-07-01T12:00:00Z');
+  assert.equal(zoneName(winter, 'Asia/Hong_Kong', 'es'), 'Hora estándar de Hong Kong');
+  assert.equal(zoneName(winter, 'Asia/Hong_Kong', 'en'), 'Hong Kong Standard Time');
+  assert.equal(zoneName(winter, 'Europe/Madrid', 'es'), 'Hora estándar de Europa central');
+  assert.equal(zoneName(summer, 'Europe/Madrid', 'es'), 'Hora de verano de Europa central');
+  assert.equal(zoneName(summer, 'America/New_York', 'en'), 'Eastern Daylight Time');
 });
 
 test('dayDelta across the date line', () => {
