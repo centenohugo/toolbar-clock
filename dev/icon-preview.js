@@ -6,7 +6,7 @@ const TIMES = [
   { label: '09:05', hours: '09', minutes: '05' },
   { label: '14:35', hours: '14', minutes: '35' },
   { label: '23:59', hours: '23', minutes: '59' },
-  { label: '9:05 (12 h)', hours: '9', minutes: '05' },
+  { label: '09:05 (12 h)', hours: '09', minutes: '05' },
   { label: '12:59 (12 h)', hours: '12', minutes: '59' },
 ];
 
