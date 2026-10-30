@@ -32,7 +32,7 @@ src/lib/time.js                  pure time helpers (tested)
 src/lib/settings.js              settings schema and storage
 src/popup/                       popup UI
 test/                            node:test suites
-dev/                             icon preview page (serve the repo over http)
+dev/                             icon and popup preview pages (serve the repo over http)
 ```
 
 ## License
