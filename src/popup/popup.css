@@ -357,21 +357,3 @@ input {
   border: 0;
   border-radius: 2px;
 }
-
-.swatch:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.check {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-input[type='checkbox'] {
-  margin: 0;
-  accent-color: var(--accent);
-}
