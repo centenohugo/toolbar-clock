@@ -1,11 +1,12 @@
 // Popup: lists the zones and holds the settings.
 
-import { loadSettings, saveSettings, onSettingsChanged } from '../lib/settings.js';
+import { loadSettings, saveSettings, onSettingsChanged, newZoneId, MAX_ZONES } from '../lib/settings.js';
 import {
   systemTimeZone, resolveTimeZone, formatTime, offsetFrom, formatOffset, dayDelta,
   displayLabel, msUntilNextMinute,
 } from '../lib/time.js';
 import { h, t, replaceKeepingFocus } from './dom.js';
+import { createSearch } from './search.js';
 
 const locale = chrome.i18n.getUILanguage();
 
@@ -15,6 +16,20 @@ let updaters = []; // one per visible time, called every minute
 
 const app = document.getElementById('app');
 const list = h('ul', { class: 'zones' });
+
+const search = createSearch({
+  taken: () => new Set(settings.zones.map((z) => z.timeZone).filter(Boolean)),
+  timeText,
+  onPick: addZone,
+  onClose: closeSearch,
+});
+
+const addButton = h('button', {
+  class: 'footer-button',
+  type: 'button',
+  'aria-expanded': 'false',
+  onclick: () => (search.open ? closeSearch() : openSearch()),
+}, t('addZone'));
 
 /** Applies a change locally right away and persists it. */
 function commit(change) {
@@ -142,15 +157,35 @@ function removeZone(id) {
   labels[Math.min(index, labels.length - 1)]?.focus();
 }
 
+function openSearch() {
+  search.show();
+  addButton.setAttribute('aria-expanded', 'true');
+}
+
+function closeSearch() {
+  search.hide();
+  addButton.setAttribute('aria-expanded', 'false');
+  addButton.focus();
+}
+
+function addZone(timeZone) {
+  if (settings.zones.length >= MAX_ZONES) return;
+  closeSearch();
+  commit((s) => { s.zones.push({ id: newZoneId(), timeZone, label: '' }); });
+}
+
 function render() {
   updaters = [];
   replaceKeepingFocus(list, ...settings.zones.map(zoneRow));
+  addButton.disabled = settings.zones.length >= MAX_ZONES;
+  if (addButton.disabled && search.open) closeSearch();
   tick();
 }
 
 function tick() {
   const now = new Date();
   for (const update of updaters) update(now);
+  search.refresh();
 }
 
 function scheduleTick() {
@@ -164,7 +199,7 @@ async function boot() {
   document.documentElement.lang = locale;
   document.title = t('extName');
   settings = await loadSettings();
-  app.append(list);
+  app.append(list, search.el, h('footer', { class: 'footer' }, addButton));
   render();
   scheduleTick();
   onSettingsChanged((next) => {
