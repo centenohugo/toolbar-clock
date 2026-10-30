@@ -21,40 +21,26 @@ async function draw() {
   await chrome.action.setTitle({ title: `${label} ${time}` });
 }
 
-/** Wakes the worker just after the next minute starts (replaces any pending tick). */
+/**
+ * Wakes the worker just after the next minute starts, then every minute. The
+ * alarm repeats so a wake-up that goes wrong never stops the clock.
+ */
 function schedule() {
   const delay = msUntilNextMinute(new Date()) + 50;
-  chrome.alarms.create(ALARM, { when: Date.now() + delay });
+  chrome.alarms.create(ALARM, { when: Date.now() + delay, periodInMinutes: 1 });
   // Alarms never fire sooner than 30 s; the timer covers that gap while the
   // worker is still awake.
-  if (delay < 30_000) setTimeout(update, delay);
+  if (delay < 30_000) setTimeout(redraw, delay);
 }
 
-// Updates requested while one is running collapse into a single redraw after it.
-let running = null;
-let again = false;
+function redraw() {
+  draw().catch((error) => console.error('Toolbar Clock: redraw failed', error));
+}
 
+// Schedules before drawing, so a failed draw never stops the clock.
 function update() {
-  if (running) {
-    again = true;
-    return running;
-  }
-  running = (async () => {
-    try {
-      do {
-        again = false;
-        try {
-          await draw();
-        } catch (error) {
-          console.error('Toolbar Clock: redraw failed', error);
-        }
-      } while (again);
-      schedule();
-    } finally {
-      running = null;
-    }
-  })();
-  return running;
+  schedule();
+  redraw();
 }
 
 // Alarms can fire late (e.g. after sleep); draw() always uses the current time.
